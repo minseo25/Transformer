@@ -1,0 +1,21 @@
+# Virtual Environment
+.venv
+
+# Python cache files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# macOS
+.DS_Store
+
+# IDE settings
+.vscode/
+.idea/
+
+# Python packaging
+*.egg-info/
+dist/
+build/
+eggs/
+*.egg
