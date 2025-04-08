@@ -141,7 +141,7 @@ class Attention(Module):
     torch.Tensor: Output tensor of shape (batch_size, seq, dim)
     """
 
-    def __init__(self, dim, head_dim, num_head):
+    def __init__(self, dim, head_dim, num_head, layer_id):
         self.head_dim = head_dim
         self.num_head = num_head
 
@@ -150,11 +150,13 @@ class Attention(Module):
         self.wv = Linear(dim, head_dim * num_head)
         self.wo = Linear(head_dim * num_head, dim)
 
+        self.layer_id = layer_id
+
         self.rot_pos_emb = RotaryPosEmb()
         self.softmax = Softmax()
         self.sub_modules = ["wq", "wk", "wv", "wo"]
 
-    def forward(self, x, cos, sin, mask=None, return_attn=False):
+    def forward(self, x, cos, sin, mask=None, kvcache=None, return_attn=False):
         """
         Forward pass: Compute attention mechanism
         
@@ -174,10 +176,15 @@ class Attention(Module):
         # (bsz, seqlen, head_dim * num_head) => (bsz, num_head, seqlen, head_dim)
         Q = Q.reshape(bsz, seqlen, self.num_head, self.head_dim).transpose(1,2)
         K = K.reshape(bsz, seqlen, self.num_head, self.head_dim).transpose(1,2)
-        self.V = V.reshape(bsz, seqlen, self.num_head, self.head_dim).transpose(1,2)
+        V = V.reshape(bsz, seqlen, self.num_head, self.head_dim).transpose(1,2)
 
         # positional encoding
-        self.Q, self.K = self.rot_pos_emb(Q, K, cos, sin)
+        Q, K = self.rot_pos_emb(Q, K, cos, sin)
+
+        # update KV cache
+        if kvcache is not None:
+            K, V = kvcache.update(K, V, self.layer_id)
+        self.Q, self.K, self.V = Q, K, V
 
         # (bsz, num_head, seqlen, seqlen)
         scores = torch.matmul(self.Q, self.K.transpose(-2,-1)) / math.sqrt(self.head_dim)
@@ -252,7 +259,7 @@ class TransformerBlock(Module):
         self.dim = dim
         self.num_head = num_head
         self.head_dim = dim // num_head
-        self.attention = Attention(self.dim, self.head_dim, self.num_head)
+        self.attention = Attention(self.dim, self.head_dim, self.num_head, layer_id)
         self.ffn = FeedForward(self.dim, self.dim * 4)
 
         self.layer_id = layer_id
@@ -261,7 +268,7 @@ class TransformerBlock(Module):
 
         self.sub_modules = ["attention", "ffn"]
 
-    def forward(self, x, cos, sin, mask=None):
+    def forward(self, x, cos, sin, mask=None, kvcache=None):
         """
         A residual block layer of Transformers: y = Block(x)
 
@@ -275,7 +282,7 @@ class TransformerBlock(Module):
         """
         # (bsz, seqlen, dim) => (bsz, seqlen, dim)
         x_norm = self.attention_norm(x)
-        h = self.attention(x_norm, cos, sin, mask) + x
+        h = self.attention(x_norm, cos, sin, mask, kvcache) + x
 
         # (bsz, seqlen, dim) => (bsz, seqlen, dim)
         h_norm = self.ffn_norm(h)

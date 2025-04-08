@@ -10,6 +10,12 @@ pip install -e .
 pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu126 # for gpu
 ```
 
+## Testing
+
+```bash
+python tests\test.py
+```
+
 ## Details
 
 `transformer\abstract.py`
@@ -40,6 +46,12 @@ pip3 install torch torchvision torchaudio --index-url https://download.pytorch.o
 - Momentum
 - RMSProp
 - Adam
+
+`transformer\kvcache.py`
+```python
+kvcache = KVCache(model.n_layers)
+y = model(x, kvcache=kvcache) # use kvcache in inference
+```
 
 ## Useful Sites
 

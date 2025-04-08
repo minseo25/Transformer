@@ -26,7 +26,7 @@ class Transformer(Module):
 
         self.sub_modules = ["tok_embeddings"] + [f"layer_{i}" for i in range(n_layers)] + ["output"]
 
-    def forward(self, tokens, labels=None):
+    def forward(self, tokens, labels=None, kvcache=None):
         """
         Transformer architecture: y = Transformer(x, label=None)
 
@@ -40,11 +40,13 @@ class Transformer(Module):
         """
         seqlen = tokens.shape[1]
 
+        cache_len = 0 if kvcache is None else kvcache._seen_tokens
+
         # (bsz, seqlen) => (bsz, seqlen, dim)
-        h = self.tok_embeddings(tokens)
+        h = self.tok_embeddings(tokens[:, cache_len:])
 
         # random initialize of pos_ids (can be trained), move to device
-        position_ids = torch.arange(seqlen, device=tokens.device).reshape(1,-1)
+        position_ids = torch.arange(cache_len, seqlen, device=tokens.device).reshape(1,-1)
         # set position_embedding
         cos, sin = self.rope(position_ids)
 
@@ -53,11 +55,12 @@ class Transformer(Module):
         if seqlen > 1:
             mask = torch.triu(torch.ones(seqlen, seqlen, device=tokens.device), diagonal = 1)
             mask = mask.masked_fill(mask == 1, float("-inf"))
+            mask = mask[cache_len:, :]
 
         # (bsz, seqlen, dim)
         for i in range(self.n_layers):
             layer = getattr(self, f"layer_{i}")
-            h = layer(h, cos, sin, mask)
+            h = layer(h, cos, sin, mask, kvcache)
         h_norm = self.norm(h)
 
         # (bsz, seqlen, dim) => (bsz, seqlen, vocab_size)

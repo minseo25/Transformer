@@ -29,8 +29,9 @@ h = torch.randn(batch_size, seq_len, dim)
 # generate rope with random position_ids
 cos, sin = RotaryEmbedding(head_dim)(torch.randint(0, seq_len, (batch_size, seq_len)))
 
-test_module("Attention", Attention, [dim, head_dim, n_head], [h, cos, sin])
+test_module("Attention", Attention, [dim, head_dim, n_head, 0], [h, cos, sin])
 test_module("TransformerBlock", TransformerBlock, [0, dim, n_head], [h, cos, sin])
 
 tok_ids = torch.randint(0, vocab_size, (batch_size, seq_len)) # random tokenizing
+# don't use kvcache in testing (use it for inference)
 test_module("Transformer", Transformer, [n_layers, vocab_size, dim, n_head], [tok_ids, tok_ids])
