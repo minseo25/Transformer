@@ -60,3 +60,5 @@ softmax: https://medium.com/data-science/derivative-of-the-softmax-function-and-
 cross entropy loss: https://velog.io/@hjk1996/Cross-Entropy%EC%99%80-Softmax%EC%9D%98-%EB%AF%B8%EB%B6%84
 
 RMSNorm: https://math.stackexchange.com/questions/2882762/is-there-an-easy-way-to-compute-the-jacobian-of-a-normalized-vector
+
+PyTorch autograd: https://pytorch.org/tutorials/beginner/blitz/autograd_tutorial.html#optional-reading-vector-calculus-using-autograd
